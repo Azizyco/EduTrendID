@@ -98,11 +98,17 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     // Tes koneksi database terlebih dahulu
-    const dbConnected = await testConnection();
-    
-    if (!dbConnected) {
-      console.error('❌ Gagal menghubungkan ke database. Server tidak dijalankan.');
-      process.exit(1);
+    let dbConnected = false;
+    const skipDb = process.env.SKIP_DB_CHECK === 'true';
+    if (skipDb) {
+      console.warn('⚠️ SKIP_DB_CHECK=true -> Melewati pengecekan database. Gunakan hanya untuk debugging jaringan.');
+      dbConnected = false;
+    } else {
+      dbConnected = await testConnection();
+      if (!dbConnected) {
+        console.error('❌ Gagal menghubungkan ke database. Set SKIP_DB_CHECK=true di .env jika ingin server tetap start sementara.');
+        process.exit(1);
+      }
     }
 
     // Jalankan server
@@ -112,6 +118,7 @@ const startServer = async () => {
       console.log(`📡 Port: ${PORT}`);
       console.log(`🌍 URL: http://localhost:${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🗄️ Database Connected: ${dbConnected ? 'YA' : (skipDb ? 'DILEWATI' : 'TIDAK')}`);
       console.log('====================================');
     });
   } catch (error) {

@@ -4,7 +4,31 @@
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const UserModel = require('../models/user.model');
+
+// ====================================================================
+// OPSI TIDAK DIREKOMENDASIKAN: PASSWORD PLAIN TEXT
+// --------------------------------------------------------------------
+// Jika USE_PLAIN_PASSWORD=true di .env maka register akan menyimpan
+// password apa adanya (TIDAK DI-HASH) dan login akan melakukan
+// perbandingan langsung dengan timingSafeEqual.
+// Peringatan: Menyimpan password tanpa hash sangat berbahaya.
+// Hanya gunakan untuk demo lokal yang benar-benar sementara.
+// ====================================================================
+
+function safeEqual(a, b) {
+  // Bandingkan string secara timing-safe untuk meminimalkan side-channel
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
 
 class AuthController {
   // Login
@@ -31,7 +55,14 @@ class AuthController {
       }
 
       // Verifikasi password
-      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      let isValidPassword = false;
+      if (user.password_hash && user.password_hash.startsWith('$2')) {
+        // Format bcrypt normal
+        isValidPassword = await bcrypt.compare(password, user.password_hash);
+      } else {
+        // Fallback (plain text) - TIDAK DIREKOMENDASIKAN
+        isValidPassword = safeEqual(password, user.password_hash);
+      }
 
       if (!isValidPassword) {
         return res.status(401).json({
@@ -105,7 +136,7 @@ class AuthController {
   // Register (opsional, untuk menambah admin baru)
   static async register(req, res) {
     try {
-      const { username, password } = req.body;
+      const { username, password } = req.body; // masih gunakan 'username' sebagai field pengenal
 
       // Validasi input
       if (!username || !password) {
@@ -124,8 +155,12 @@ class AuthController {
         });
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
+      // Pilih mode hashing atau plain sesuai env
+      const usePlain = process.env.USE_PLAIN_PASSWORD === 'true';
+      const passwordHash = usePlain ? password : await bcrypt.hash(password, 10);
+      if (usePlain) {
+        console.warn('⚠️ USE_PLAIN_PASSWORD=true -> password disimpan TANPA hash. Ini tidak aman.');
+      }
 
       // Buat user baru
       const newUser = await UserModel.create(username, passwordHash);
