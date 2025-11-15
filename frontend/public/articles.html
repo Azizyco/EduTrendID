@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Artikel - EduTrendID</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link href="../assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="dashboard.html">🎓 EduTrendID</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="articles.html">Artikel</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="analysis.html">Analisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="sources.html">Sumber Berita</a>
+          </li>
+        </ul>
+        <button class="btn btn-outline-danger" onclick="logout()">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header text-center mb-4">
+      <h1><i class="bi bi-newspaper"></i> Daftar Artikel</h1>
+      <p>Kelola artikel berita pendidikan Yogyakarta</p>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Cari Artikel</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="searchInput" 
+                  placeholder="Cari berdasarkan judul..."
+                >
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Sumber</label>
+                <select class="form-select" id="filterSource">
+                  <option value="">Semua Sumber</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="searchArticles()">
+                  <i class="bi bi-search"></i> Cari
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabel Artikel -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Daftar Artikel</h5>
+            <span class="badge bg-primary" id="totalBadge">0 artikel</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 45%;">Judul</th>
+                    <th style="width: 15%;">Tanggal</th>
+                    <th style="width: 20%;">Sumber</th>
+                    <th style="width: 15%;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="articleTableBody">
+                  <tr>
+                    <td colspan="5" class="text-center">Memuat data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav>
+              <ul class="pagination justify-content-center" id="pagination">
+                <!-- Pagination akan dibuat dengan JavaScript -->
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detail Artikel -->
+  <div class="modal fade" id="modalDetail" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Detail Artikel</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h4 id="detailJudul"></h4>
+          <p class="text-muted">
+            <i class="bi bi-calendar"></i> <span id="detailTanggal"></span> | 
+            <i class="bi bi-newspaper"></i> <span id="detailSumber"></span>
+          </p>
+          <hr>
+          <div id="detailIsi"></div>
+          <hr>
+          <p class="text-muted">
+            <i class="bi bi-link-45deg"></i> 
+            <a id="detailUrl" href="#" target="_blank">Buka artikel asli</a>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Utils JS -->
+  <script src="../assets/js/utils.js"></script>
+
+  <!-- Articles Script -->
+  <script>
+    // Cek autentikasi
+    if (!requireAuth()) {
+      // Redirect handled by requireAuth
+    }
+
+    // State
+    let currentPage = 1;
+    let totalPages = 1;
+    const limit = 10;
+
+    // Load data saat halaman dimuat
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSources();
+      loadArticles();
+    });
+
+    // Fungsi untuk load sumber berita (untuk filter)
+    async function loadSources() {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/sources`);
+        const result = await response.json();
+
+        if (result.success) {
+          const select = document.getElementById('filterSource');
+          result.data.forEach(source => {
+            const option = document.createElement('option');
+            option.value = source.id_sumber;
+            option.textContent = source.nama_sumber;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading sources:', error);
+      }
+    }
+
+    // Fungsi untuk load artikel
+    async function loadArticles(page = 1) {
+      currentPage = page;
+
+      const search = document.getElementById('searchInput').value;
+      const source = document.getElementById('filterSource').value;
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: limit,
+        search: search,
+        source: source
+      });
+
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/articles?${params}`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('articleTableBody');
+
+        if (result.success && result.data.articles.length > 0) {
+          totalPages = result.data.pagination.totalPages;
+          
+          // Update badge total
+          document.getElementById('totalBadge').textContent = 
+            `${formatNumber(result.data.pagination.totalItems)} artikel`;
+
+          // Render tabel
+          tbody.innerHTML = result.data.articles.map((article, index) => {
+            const no = (currentPage - 1) * limit + index + 1;
+            return `
+              <tr>
+                <td>${no}</td>
+                <td>
+                  <strong>${article.judul}</strong>
+                  ${article.topik ? `<br><span class="badge bg-info">${article.topik}</span>` : ''}
+                </td>
+                <td>${article.tanggal || '-'}</td>
+                <td>${article.nama_sumber || '-'}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary" onclick="showDetail(${article.id_artikel})">
+                    <i class="bi bi-eye"></i> Detail
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+
+          // Render pagination
+          renderPagination();
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada artikel ditemukan</td></tr>';
+          document.getElementById('pagination').innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error loading articles:', error);
+        document.getElementById('articleTableBody').innerHTML = 
+          '<tr><td colspan="5" class="text-center text-danger">Gagal memuat artikel</td></tr>';
+      }
+    }
+
+    // Fungsi untuk render pagination
+    function renderPagination() {
+      const pagination = document.getElementById('pagination');
+      let html = '';
+
+      // Previous button
+      html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <a class="page-link" href="#" onclick="loadArticles(${currentPage - 1}); return false;">
+            <i class="bi bi-chevron-left"></i> Prev
+          </a>
+        </li>
+      `;
+
+      // Page numbers (max 5 pages)
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, startPage + 4);
+
+      for (let i = startPage; i <= endPage; i++) {
+        html += `
+          <li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="loadArticles(${i}); return false;">${i}</a>
+          </li>
+        `;
+      }
+
+      // Next button
+      html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <a class="page-link" href="#" onclick="loadArticles(${currentPage + 1}); return false;">
+            Next <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+      `;
+
+      pagination.innerHTML = html;
+    }
+
+    // Fungsi untuk search
+    function searchArticles() {
+      loadArticles(1);
+    }
+
+    // Enter key untuk search
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        searchArticles();
+      }
+    });
+
+    // Fungsi untuk show detail artikel
+    async function showDetail(id) {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/articles/${id}`);
+        const result = await response.json();
+
+        if (result.success) {
+          const article = result.data;
+          
+          document.getElementById('detailJudul').textContent = article.judul;
+          document.getElementById('detailTanggal').textContent = article.tanggal || '-';
+          document.getElementById('detailSumber').textContent = article.nama_sumber || '-';
+          document.getElementById('detailIsi').textContent = article.isi;
+          document.getElementById('detailUrl').href = article.url_asli || '#';
+
+          // Show modal
+          const modal = new bootstrap.Modal(document.getElementById('modalDetail'));
+          modal.show();
+        }
+      } catch (error) {
+        console.error('Error loading article detail:', error);
+        showAlert('Gagal memuat detail artikel', 'danger');
+      }
+    }
+  </script>
+</body>
+</html>

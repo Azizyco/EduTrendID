@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sumber Berita - EduTrendID</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link href="../assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="dashboard.html">🎓 EduTrendID</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="articles.html">Artikel</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="analysis.html">Analisis</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="sources.html">Sumber Berita</a>
+          </li>
+        </ul>
+        <button class="btn btn-outline-danger" onclick="logout()">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header text-center mb-4">
+      <h1><i class="bi bi-rss"></i> Sumber Berita</h1>
+      <p>Kelola sumber berita untuk scraping</p>
+    </div>
+
+    <!-- Tombol Tambah -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalForm">
+          <i class="bi bi-plus-circle"></i> Tambah Sumber Baru
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabel Sumber -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Daftar Sumber Berita</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 25%;">Nama Sumber</th>
+                    <th style="width: 40%;">URL</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 20%;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="sourceTableBody">
+                  <tr>
+                    <td colspan="5" class="text-center">Memuat data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Form (Tambah/Edit) -->
+  <div class="modal fade" id="modalForm" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Tambah Sumber Berita</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formSource">
+          <div class="modal-body">
+            <input type="hidden" id="sourceId">
+            
+            <div class="mb-3">
+              <label for="namaSumber" class="form-label">Nama Sumber</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="namaSumber" 
+                placeholder="Contoh: Portal Berita Pendidikan"
+                required
+              >
+            </div>
+
+            <div class="mb-3">
+              <label for="url" class="form-label">URL</label>
+              <input 
+                type="url" 
+                class="form-control" 
+                id="url" 
+                placeholder="https://example.com/pendidikan"
+                required
+              >
+              <small class="text-muted">URL halaman yang akan di-scrape</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Status</label>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="statusAktif" checked>
+                <label class="form-check-label" for="statusAktif">Aktif</label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Utils JS -->
+  <script src="../assets/js/utils.js"></script>
+
+  <!-- Sources Script -->
+  <script>
+    // Cek autentikasi
+    if (!requireAuth()) {
+      // Redirect handled by requireAuth
+    }
+
+    let modalInstance = null;
+
+    // Load data saat halaman dimuat
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSources();
+      modalInstance = new bootstrap.Modal(document.getElementById('modalForm'));
+    });
+
+    // Fungsi untuk load sumber berita
+    async function loadSources() {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/sources`);
+        const result = await response.json();
+
+        const tbody = document.getElementById('sourceTableBody');
+
+        if (result.success && result.data.length > 0) {
+          tbody.innerHTML = result.data.map((source, index) => {
+            const statusBadge = source.status_aktif
+              ? '<span class="badge bg-success">Aktif</span>'
+              : '<span class="badge bg-secondary">Non-Aktif</span>';
+
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td><strong>${source.nama_sumber}</strong></td>
+                <td><small>${source.url}</small></td>
+                <td>${statusBadge}</td>
+                <td>
+                  <button class="btn btn-sm btn-warning" onclick="editSource(${source.id_sumber})">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteSource(${source.id_sumber})">
+                    <i class="bi bi-trash"></i> Hapus
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center">Belum ada sumber berita</td></tr>';
+        }
+      } catch (error) {
+        console.error('Error loading sources:', error);
+        document.getElementById('sourceTableBody').innerHTML = 
+          '<tr><td colspan="5" class="text-center text-danger">Gagal memuat data</td></tr>';
+      }
+    }
+
+    // Handle form submit
+    document.getElementById('formSource').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const sourceId = document.getElementById('sourceId').value;
+      const namaSumber = document.getElementById('namaSumber').value;
+      const url = document.getElementById('url').value;
+      const statusAktif = document.getElementById('statusAktif').checked;
+
+      const data = {
+        nama_sumber: namaSumber,
+        url: url,
+        status_aktif: statusAktif
+      };
+
+      try {
+        let response;
+        if (sourceId) {
+          // Update
+          response = await fetchWithAuth(`${API_BASE_URL}/sources/${sourceId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+          });
+        } else {
+          // Create
+          response = await fetchWithAuth(`${API_BASE_URL}/sources`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+          });
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          showAlert(`Sumber berita berhasil ${sourceId ? 'diupdate' : 'ditambahkan'}`, 'success');
+          modalInstance.hide();
+          resetForm();
+          loadSources();
+        } else {
+          showAlert(result.message, 'danger');
+        }
+      } catch (error) {
+        console.error('Error saving source:', error);
+        showAlert('Terjadi kesalahan saat menyimpan data', 'danger');
+      }
+    });
+
+    // Fungsi untuk edit sumber
+    async function editSource(id) {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/sources/${id}`);
+        const result = await response.json();
+
+        if (result.success) {
+          const source = result.data;
+          
+          document.getElementById('modalTitle').textContent = 'Edit Sumber Berita';
+          document.getElementById('sourceId').value = source.id_sumber;
+          document.getElementById('namaSumber').value = source.nama_sumber;
+          document.getElementById('url').value = source.url;
+          document.getElementById('statusAktif').checked = source.status_aktif;
+
+          modalInstance.show();
+        }
+      } catch (error) {
+        console.error('Error loading source:', error);
+        showAlert('Gagal memuat data sumber', 'danger');
+      }
+    }
+
+    // Fungsi untuk delete sumber
+    async function deleteSource(id) {
+      if (!confirm('Yakin ingin menghapus sumber berita ini?')) return;
+
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/sources/${id}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showAlert('Sumber berita berhasil dihapus', 'success');
+          loadSources();
+        } else {
+          showAlert(result.message, 'danger');
+        }
+      } catch (error) {
+        console.error('Error deleting source:', error);
+        showAlert('Terjadi kesalahan saat menghapus data', 'danger');
+      }
+    }
+
+    // Reset form
+    function resetForm() {
+      document.getElementById('modalTitle').textContent = 'Tambah Sumber Berita';
+      document.getElementById('formSource').reset();
+      document.getElementById('sourceId').value = '';
+      document.getElementById('statusAktif').checked = true;
+    }
+
+    // Reset form saat modal ditutup
+    document.getElementById('modalForm').addEventListener('hidden.bs.modal', resetForm);
+  </script>
+</body>
+</html>
