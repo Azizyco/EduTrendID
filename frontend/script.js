@@ -47,9 +47,16 @@ document.getElementById("scrapeForm").addEventListener("submit", async function(
       let explanation = `<h2>Penjelasan Pola Kata</h2><p>${analysis.explanation}</p>`;
       // Grafik frekuensi kata
       let freqData = Object.entries(analysis.freq).sort((a,b)=>b[1]-a[1]).slice(0,10);
-      let freqBar = `<h2>Grafik Frekuensi Kata</h2><div style="display:flex;align-items:flex-end;gap:8px;height:120px;">`;
+      let freqBar = `<h2>Grafik Frekuensi Kata</h2><div class='freq-bar-container'>`;
+      const maxVal = freqData[0] ? freqData[0][1] : 1;
       freqData.forEach(([word, val]) => {
-        freqBar += `<div style="background:#3498db;width:40px;height:${val*10}px;text-align:center;color:#fff;border-radius:4px 4px 0 0;">${word}<br><span style="font-size:0.9em;">${val}</span></div>`;
+        const barHeight = 40 + (val / maxVal) * 100;
+        freqBar += `
+          <div class='freq-bar' style='height:${barHeight}px;'>
+            <span>${val}</span>
+            <div class='freq-bar-label'>${word}</div>
+          </div>
+        `;
       });
       freqBar += `</div>`;
       analysisDiv.innerHTML = tfidfTable + kategoriList + explanation + freqBar;
