@@ -15,5 +15,8 @@ export function preprocess(text) {
   tokens = stopword.removeStopwords(tokens, stopword.id);
   // Stemming
   tokens = tokens.map(token => stemmer.stem(token));
+  // Additional filtering: remove very short tokens and known noise words
+  const extraStop = new Set(["advertisement", "google", "news", "cek", "pt", "tbk"]);
+  tokens = tokens.filter(t => t.length > 1 && !extraStop.has(t));
   return tokens;
 }

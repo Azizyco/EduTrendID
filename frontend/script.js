@@ -31,12 +31,27 @@ document.getElementById("scrapeForm").addEventListener("submit", async function(
         body: JSON.stringify({ articles: data.results })
       });
       const analysis = await res2.json();
-      // Tabel kata TF-IDF
-      let tfidfTable = `<h2>Kata TF-IDF Tertinggi</h2><table><tr><th>Kata</th><th>Bobot</th></tr>`;
-      analysis.topWords.forEach(w => {
-        tfidfTable += `<tr><td>${w.word}</td><td>${w.score.toFixed(3)}</td></tr>`;
+      // Hitung jumlah kemunculan kata
+      let wordCounts = {};
+      data.results.forEach(item => {
+        if (item.content) {
+          item.content.toLowerCase().replace(/[^a-zA-Z\s]/g, " ").split(/\s+/).forEach(token => {
+            if (token) wordCounts[token] = (wordCounts[token] || 0) + 1;
+          });
+        }
+      });
+      // Tabel kata TF-IDF (top by score)
+      let tfidfTable = `<h2>Top 20 Kata Berdasarkan TF-IDF (Score)</h2><table><tr><th>No</th><th>Kata</th><th>Jumlah</th><th>Score</th></tr>`;
+      analysis.topByScore.forEach((w, i) => {
+        tfidfTable += `<tr><td>${i+1}</td><td>${w.word}</td><td>${analysis.freq[w.word] || 0}</td><td>${w.score.toFixed(3)}</td></tr>`;
       });
       tfidfTable += `</table>`;
+      // Tabel kata berdasarkan frekuensi (top by count)
+      let freqTable = `<h2>Top 20 Kata Berdasarkan Jumlah Muncul</h2><table><tr><th>No</th><th>Kata</th><th>Jumlah</th><th>Score (TF-IDF)</th></tr>`;
+      analysis.topByCount.forEach((w, i) => {
+        freqTable += `<tr><td>${i+1}</td><td>${w.word}</td><td>${w.count}</td><td>${(w.score||0).toFixed(3)}</td></tr>`;
+      });
+      freqTable += `</table>`;
       // Kategori
       let kategoriList = `<h2>Kategori Artikel</h2><ul>`;
       analysis.categories.forEach(c => {
@@ -45,26 +60,45 @@ document.getElementById("scrapeForm").addEventListener("submit", async function(
       kategoriList += `</ul>`;
       // Penjelasan
       let explanation = `<h2>Penjelasan Pola Kata</h2><p>${analysis.explanation}</p>`;
-      // Grafik frekuensi kata
-      let freqData = Object.entries(analysis.freq).sort((a,b)=>b[1]-a[1]).slice(0,10);
-      let freqBar = `<h2>Grafik Frekuensi Kata</h2><div class='freq-bar-container'>`;
-      const maxVal = freqData[0] ? freqData[0][1] : 1;
-      freqData.forEach(([word, val]) => {
-        const barHeight = 40 + (val / maxVal) * 100;
-        freqBar += `
-          <div class='freq-bar' style='height:${barHeight}px;'>
-            <span>${val}</span>
-            <div class='freq-bar-label'>${word}</div>
-          </div>
-        `;
+      // Dua grafik: (A) berdasarkan score TF-IDF (topByScore), (B) berdasarkan jumlah kemunculan (topByCount)
+      const topScoreChartItems = analysis.topByScore.slice(0, 10);
+      const topCountChartItems = analysis.topByCount.slice(0, 10);
+
+      let chartHtml = `<div class='charts-row'>`;
+      // Chart A: TF-IDF score (bars scaled by score)
+      chartHtml += `<div class='chart-card'><h3>Top (by TF-IDF score)</h3><div class='freq-bar-container'>`;
+      const maxScore = topScoreChartItems[0] ? topScoreChartItems[0].score : 1;
+      topScoreChartItems.forEach(item => {
+        const h = 30 + (item.score / (maxScore || 1)) * 140;
+        chartHtml += `
+          <div class='freq-bar' style='height:${h}px;'>
+            <span>${(item.score||0).toFixed(3)}</span>
+            <div class='freq-bar-label'>${item.word}</div>
+          </div>`;
       });
-      freqBar += `</div>`;
-      analysisDiv.innerHTML = tfidfTable + kategoriList + explanation + freqBar;
+      chartHtml += `</div></div>`;
+
+      // Chart B: Count (bars scaled by count)
+      chartHtml += `<div class='chart-card'><h3>Top (by Count)</h3><div class='freq-bar-container'>`;
+      const maxCount = topCountChartItems[0] ? topCountChartItems[0].count : 1;
+      topCountChartItems.forEach(item => {
+        const h = 30 + (item.count / (maxCount || 1)) * 140;
+        chartHtml += `
+          <div class='freq-bar' style='height:${h}px;'>
+            <span>${item.count}</span>
+            <div class='freq-bar-label'>${item.word}</div>
+          </div>`;
+      });
+      chartHtml += `</div></div>`;
+      chartHtml += `</div>`;
+
+      analysisDiv.innerHTML = tfidfTable + freqTable + kategoriList + explanation + chartHtml;
 
       // Word Cloud sederhana (text size)
       let wcHtml = `<h2>Word Cloud</h2><div style="display:flex;flex-wrap:wrap;gap:8px;max-width:600px;">`;
-      analysis.topWords.forEach(w => {
-        wcHtml += `<span style="font-size:${12 + w.score*2}px;color:#${Math.floor(Math.random()*16777215).toString(16)};font-weight:bold;">${w.word}</span> `;
+      // Use topByScore for word cloud
+      analysis.topByScore.forEach(w => {
+        wcHtml += `<span style="font-size:${12 + (w.score||0)*20}px;color:#${Math.floor(Math.random()*16777215).toString(16)};font-weight:bold;">${w.word}</span> `;
       });
       wcHtml += `</div>`;
       wordcloudDiv.innerHTML = wcHtml;

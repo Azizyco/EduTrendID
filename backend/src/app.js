@@ -3,7 +3,7 @@ import cors from "cors";
 import { scrapeArticles } from "./scraper.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -52,28 +52,54 @@ app.post("/analyze", async (req, res) => {
   try {
     // Gabungkan semua konten
     const contents = articles.map(a => a.content);
-    // Preprocessing dan TF-IDF
-    const tfidf = computeTFIDF(contents);
-    // Ambil 10-20 kata dengan bobot tertinggi
-    const sorted = Object.entries(tfidf).sort((a, b) => b[1] - a[1]);
-    const topWords = sorted.slice(0, 20).map(([word, score]) => ({ word, score }));
-    // Kategori tiap artikel
-    const categories = articles.map(a => ({ url: a.url, kategori: categorize(a.content) }));
-    // Frekuensi kata
+    // Frekuensi kata berdasarkan preprocessing (tokens)
     const freq = {};
-    contents.forEach(text => {
-      preprocess(text).forEach(token => {
+    const docsTokens = contents.map(text => preprocess(text));
+    docsTokens.forEach(tokens => {
+      tokens.forEach(token => {
         freq[token] = (freq[token] || 0) + 1;
       });
     });
+
+    // Preprocessing dan TF-IDF (computeTFIDF expects raw documents)
+    const tfidf = computeTFIDF(contents);
+
+    // Gabungkan score dan count
+    const combined = Object.entries(tfidf).map(([word, score]) => ({
+      word,
+      score: typeof score === 'number' ? score : Number(score) || 0,
+      count: freq[word] || 0
+    }));
+    // Top 20 berdasarkan score (TF-IDF)
+    const topByScore = [...combined].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.count - a.count;
+    }).slice(0, 20);
+    // Top 20 berdasarkan jumlah kemunculan (count)
+    const topByCount = [...combined].sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return b.score - a.score;
+    }).slice(0, 20);
+    // Kategori tiap artikel
+    const categories = articles.map(a => ({ url: a.url, kategori: categorize(a.content) }));
     // Penjelasan pola sederhana
     let explanation = "Kata-kata dengan bobot tinggi menunjukkan topik utama yang sering dibahas dalam kumpulan artikel. Pola kata dapat mengindikasikan tren atau fokus berita pendidikan.";
-    res.json({ topWords, categories, freq, explanation });
+    res.json({ topByScore, topByCount, categories, freq, explanation });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Choose another port or stop the process using it.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+    process.exit(1);
+  }
 });
