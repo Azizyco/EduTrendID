@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Scraping NLP</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Scraping Artikel Harian Jogja</h1>
+    <form id="scrapeForm">
+      <label for="urls">Masukkan URL (pisahkan dengan baris baru):</label><br>
+      <textarea id="urls" rows="6" cols="60" placeholder="https://...\nhttps://..."></textarea><br>
+      <button type="submit">Scrape</button>
+    </form>
+    <div id="results"></div>
+    <div id="analysis" style="margin-top:40px;"></div>
+    <div id="wordcloud" style="margin-top:32px;"></div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
