@@ -94,11 +94,25 @@ document.getElementById("scrapeForm").addEventListener("submit", async function(
 
       analysisDiv.innerHTML = tfidfTable + freqTable + kategoriList + explanation + chartHtml;
 
-      // Word Cloud sederhana (text size)
-      let wcHtml = `<h2>Word Cloud</h2><div style="display:flex;flex-wrap:wrap;gap:8px;max-width:600px;">`;
-      // Use topByScore for word cloud
-      analysis.topByScore.forEach(w => {
-        wcHtml += `<span style="font-size:${12 + (w.score||0)*20}px;color:#${Math.floor(Math.random()*16777215).toString(16)};font-weight:bold;">${w.word}</span> `;
+      // Word Cloud: mimic Python wordcloud using top N words by TF-IDF
+      const TOP_WC = Math.min(100, analysis.topByScore.length || 0);
+      const wcItems = analysis.topByScore.slice(0, TOP_WC);
+      // normalize scores to a size range
+      const scores = wcItems.map(x => x.score || 0);
+      const minS = Math.min(...scores, 0);
+      const maxS = Math.max(...scores, 0.0001);
+      const sizeMin = 14; // px
+      const sizeMax = 60; // px
+      const colors = ["#1a2980","#2980b9","#6dd5fa","#ff7eb3","#ffd166","#7bd389","#f4976c"];
+      let wcHtml = `<h2>Word Cloud</h2><div class='word-cloud'>`;
+      wcItems.forEach(item => {
+        const s = item.score || 0;
+        // normalized 0..1
+        const norm = (s - minS) / (maxS - minS + 1e-12);
+        const fontSize = (sizeMin + norm * (sizeMax - sizeMin)).toFixed(1);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const rotate = (Math.random() * 60 - 30).toFixed(1); // -30..30 deg
+        wcHtml += `<span style="font-size:${fontSize}px;color:${color};transform:rotate(${rotate}deg);">${item.word}</span>`;
       });
       wcHtml += `</div>`;
       wordcloudDiv.innerHTML = wcHtml;

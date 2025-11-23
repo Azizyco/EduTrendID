@@ -118,6 +118,28 @@ button:hover {
   margin-bottom: 24px;
 }
 
+/* Word cloud styles (mimic python wordcloud layout) */
+.word-cloud {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8fb 100%);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.word-cloud span {
+  display: inline-block;
+  margin: 6px 8px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.word-cloud span:hover {
+  transform: scale(1.08) translateY(-3px);
+  opacity: 0.95;
+}
+
 .freq-bar-container {
   display: flex;
   align-items: flex-end;
